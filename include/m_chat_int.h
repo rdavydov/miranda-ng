@@ -104,7 +104,7 @@ struct COMMANDINFO
 	COMMANDINFO *last, *next;
 };
 
-struct FONTINFO
+struct FONTINFO : public FontIDW
 {
 	LOGFONT  lf;
 	COLORREF color;

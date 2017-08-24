@@ -69,6 +69,7 @@ static FontOptionsList fontOptionsList[] =
 	{ LPGENW("Nick list members (away)"),     RGB(170, 170, 170), lfDefault.lfFaceName, DEFAULT_CHARSET, 0, -12 }
 };
 
+
 static void LoadColors()
 {
 	g_Settings->crUserListBGColor = db_get_dw(0, CHAT_MODULE, "ColorNicklistBG", GetSysColor(COLOR_WINDOW));
@@ -92,40 +93,12 @@ void LoadLogFonts(void)
 
 void LoadMsgDlgFont(int i, LOGFONT *lf, COLORREF *colour)
 {
-	char str[32];
-	int style;
-	FontOptionsList &FO = fontOptionsList[i];
+	LOGFONT tmpLf;
+	COLORREF color = Font_GetW(chatApi.aFonts[i], &tmpLf);
 
-	if (colour) {
-		mir_snprintf(str, "Font%dCol", i);
-		*colour = db_get_dw(0, CHATFONT_MODULE, str, FO.defColour);
-	}
-	if (lf) {
-		mir_snprintf(str, "Font%dSize", i);
-		lf->lfHeight = (char)db_get_b(0, CHATFONT_MODULE, str, FO.defSize);
-		lf->lfWidth = 0;
-		lf->lfEscapement = 0;
-		lf->lfOrientation = 0;
-		mir_snprintf(str, "Font%dSty", i);
-		style = db_get_b(0, CHATFONT_MODULE, str, FO.defStyle);
-		lf->lfWeight = style & FONTF_BOLD ? FW_BOLD : FW_NORMAL;
-		lf->lfItalic = style & FONTF_ITALIC ? 1 : 0;
-		lf->lfUnderline = 0;
-		lf->lfStrikeOut = 0;
-		mir_snprintf(str, "Font%dSet", i);
-		lf->lfCharSet = db_get_b(0, CHATFONT_MODULE, str, FO.defCharset);
-		lf->lfOutPrecision = OUT_DEFAULT_PRECIS;
-		lf->lfClipPrecision = CLIP_DEFAULT_PRECIS;
-		lf->lfQuality = DEFAULT_QUALITY;
-		lf->lfPitchAndFamily = DEFAULT_PITCH | FF_DONTCARE;
-		mir_snprintf(str, "Font%d", i);
+	if (colour) *colour = color;
+	if (lf) *lf = tmpLf;
 
-		ptrW tszFace(db_get_wsa(0, CHATFONT_MODULE, str));
-		if (tszFace == nullptr)
-			mir_wstrcpy(lf->lfFaceName, FO.szDefFace);
-		else
-			wcsncpy_s(lf->lfFaceName, tszFace, _TRUNCATE);
-	}
 }
 
 void RegisterFonts(void)
@@ -134,15 +107,25 @@ void RegisterFonts(void)
 
 	SystemParametersInfo(SPI_GETICONTITLELOGFONT, sizeof(lfDefault), &lfDefault, FALSE);
 
-	FontIDW fontid = { sizeof(fontid) };
-	fontid.flags = FIDF_ALLOWREREGISTER | FIDF_DEFAULTVALID | FIDF_NEEDRESTART;
-	wcsncpy_s(fontid.backgroundGroup, g_szFontGroup, _TRUNCATE);
-	wcsncpy_s(fontid.group, g_szFontGroup, _TRUNCATE);
-
 	for (int i = 0; i < _countof(fontOptionsList); i++, index++) {
+
+		FontIDW fontid = chatApi.aFonts[i];
 		FontOptionsList &FO = fontOptionsList[i];
+
+
+		fontid.cbSize = sizeof(FontIDW);
+		fontid.flags = FIDF_ALLOWREREGISTER | FIDF_DEFAULTVALID | FIDF_NEEDRESTART;
+		wcsncpy_s(fontid.backgroundGroup, g_szFontGroup, _TRUNCATE);
+		wcsncpy_s(fontid.group, g_szFontGroup, _TRUNCATE);
 		strncpy_s(fontid.dbSettingsGroup, CHATFONT_MODULE, _TRUNCATE);
 		wcsncpy_s(fontid.name, FO.szDescr, _TRUNCATE);
+
+		wcsncpy_s(fontid.deffontsettings.szFace, FO.szDefFace, _TRUNCATE);
+		fontid.deffontsettings.charset = FO.defCharset;
+		fontid.deffontsettings.colour = FO.defColour;
+		fontid.deffontsettings.size = FO.defSize;
+		fontid.deffontsettings.style = FO.defStyle;
+
 
 		mir_snprintf(fontid.prefix, "Font%d", index);
 		fontid.order = index;
@@ -171,11 +154,7 @@ void RegisterFonts(void)
 			wcsncpy_s(fontid.backgroundName, LPGENW("Group chat log background"), _TRUNCATE);
 			break;
 		}
-		wcsncpy_s(fontid.deffontsettings.szFace, FO.szDefFace, _TRUNCATE);
-		fontid.deffontsettings.charset = FO.defCharset;
-		fontid.deffontsettings.colour = FO.defColour;
-		fontid.deffontsettings.size = FO.defSize;
-		fontid.deffontsettings.style = FO.defStyle;
+
 		Font_RegisterW(&fontid, g_iChatLang);
 	}
 }

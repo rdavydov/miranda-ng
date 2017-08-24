@@ -189,7 +189,10 @@ int GetFontSettingFromDB(char *settings_group, char *prefix, LOGFONT *lf, COLORR
 			SelectObject(hdc, hOldFont);
 			DeleteObject(hFont);
 		}
-
+	}
+	else {
+		HDC hdc = GetDC(0);
+		lf->lfHeight = MulDiv(lf->lfHeight, GetDeviceCaps(hdc, LOGPIXELSY), 96);
 		ReleaseDC(0, hdc);
 	}
 
